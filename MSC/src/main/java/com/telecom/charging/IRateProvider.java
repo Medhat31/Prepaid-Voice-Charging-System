@@ -1,13 +1,13 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Interface.java to edit this template
- */
+
 package com.telecom.charging;
 
-/**
- *
- * @author mfathy
- */
+import java.math.BigDecimal;
+
 public interface IRateProvider {
-    
+    /**
+     * Determines the billing rate per minute for a given phone number.
+     * @param msisdn The subscriber's phone number.
+     * @return The rate per minute (e.g., 1.00 L.E.).
+     */
+    BigDecimal getRate(String msisdn);
 }

@@ -1,13 +1,12 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Interface.java to edit this template
- */
+
 package com.telecom.reporting;
 
-/**
- *
- * @author mfathy
- */
+import com.telecom.domain.CDR;
+
 public interface IReporter {
-    
+    /**
+     * Dispatches a finalized Call Detail Record to an output target.
+     * @param cdr The completed call metrics.
+     */
+    void report(CDR cdr);
 }
