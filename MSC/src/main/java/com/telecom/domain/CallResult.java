@@ -8,6 +8,8 @@ package com.telecom.domain;
  *
  * @author mfathy
  */
-public class CallResult {
-    
+public enum CallResult {
+    NORMAL_CALL_CLEARING,
+    USER_NOT_FOUND_ON_DB,
+    INSUFFICIENT_BALANCE
 }
