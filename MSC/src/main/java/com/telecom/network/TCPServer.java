@@ -5,6 +5,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.ExecutorService;
@@ -15,6 +16,7 @@ public class TCPServer implements ITCPServer {
     private final IMSC msc;
     private volatile boolean isRunning;
     private final ExecutorService threadPool = Executors.newCachedThreadPool();
+    private ServerSocket serverSocket;
 
     public TCPServer(IMSC msc) {
         this.msc = msc;
@@ -23,14 +25,20 @@ public class TCPServer implements ITCPServer {
     @Override
     public void listen(int port) {
         this.isRunning = true;
-        
-        try (ServerSocket serverSocket = new ServerSocket(port)) {
-            System.out.println("TCP Engine online on port " + port);
+
+        try {
+            serverSocket = new ServerSocket();
+            serverSocket.setReuseAddress(true);
+            
+            System.out.println("[TCP ENGINE]: Attempting binding sequence on port " + port + "...");
+            serverSocket.bind(new InetSocketAddress(port));
+            
+            System.out.println("TCP Signaling channel online on port " + port);
 
             while (isRunning) {
                 Socket clientSocket = serverSocket.accept();
                 System.out.println("New connection from: " + clientSocket.getRemoteSocketAddress());
-                
+
                 threadPool.submit(() -> handleClient(clientSocket));
             }
         } catch (IOException e) {
@@ -38,13 +46,18 @@ public class TCPServer implements ITCPServer {
                 System.err.println("Server socket failure: " + e.getMessage());
             }
         } finally {
-            stopServer();
+          
+            if (serverSocket != null && serverSocket.isBound()) {
+                stopServer();
+            } else {
+                this.isRunning = false;
+                System.err.println("[TCP ENGINE]: Initialization aborted safely. Port remains held by system.");
+            }
         }
     }
 
     private void handleClient(Socket socket) {
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-             PrintWriter writer = new PrintWriter(socket.getOutputStream(), true)) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream())); PrintWriter writer = new PrintWriter(socket.getOutputStream(), true)) {
 
             writer.println("CONNECTED: Welcome to the Telecom Server.");
             String inputLine;
@@ -57,12 +70,12 @@ public class TCPServer implements ITCPServer {
                     String msisdn = inputLine.substring(6).trim();
                     msc.onCallStart(msisdn);
                     writer.println("ACK: START " + msisdn);
-                    
+
                 } else if (inputLine.startsWith("END:")) {
                     String msisdn = inputLine.substring(4).trim();
                     msc.onCallEnd(msisdn);
                     writer.println("ACK: END " + msisdn);
-                    
+
                 } else if (inputLine.equalsIgnoreCase("QUIT") || inputLine.equalsIgnoreCase("EXIT")) {
                     writer.println("BYE");
                     break;
@@ -84,8 +97,20 @@ public class TCPServer implements ITCPServer {
 
     @Override
     public synchronized void stopServer() {
-        if (!isRunning) return;
+
+        try {
+            if (serverSocket != null && !serverSocket.isClosed()) {
+                serverSocket.close();
+            }
+        } catch (IOException e) {
+            System.err.println("Error forcing TCP server socket closure: " + e.getMessage());
+        }
+
+        if (!isRunning) {
+            return;
+        }
         this.isRunning = false;
+
         if (!threadPool.isShutdown()) {
             threadPool.shutdown();
         }
