@@ -31,7 +31,7 @@ public class BalanceRepository implements IBalanceRepository {
 
     @Override
     public boolean userExists(String msisdn) {
-        String sql = "SELECT EXISTS(SELECT 1 FROM Users WHERE msisdn = ?)";
+        String sql = "SELECT EXISTS(SELECT 1 FROM user_balance WHERE msisdn = ?)";
         
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -48,7 +48,7 @@ public class BalanceRepository implements IBalanceRepository {
 
     @Override
     public BigDecimal getBalance(String msisdn) {
-        String sql = "SELECT balance FROM Users WHERE msisdn = ?";
+        String sql = "SELECT balance FROM user_balance WHERE msisdn = ?";
         
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -65,7 +65,7 @@ public class BalanceRepository implements IBalanceRepository {
 
     @Override
     public void deductBalance(String msisdn, BigDecimal amount) {
-        String sql = "UPDATE Users SET balance = balance - ? WHERE msisdn = ?";
+        String sql = "UPDATE user_balance SET balance = balance - ? WHERE msisdn = ?";
         
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {

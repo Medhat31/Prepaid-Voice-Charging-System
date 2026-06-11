@@ -1,5 +1,7 @@
 package com.telecom.app;
 
+import java.io.PrintWriter;
+
 /**
  * Interface defining the capabilities of the Mobile Switching Center (MSC) orchestrator.
  * Handles the state management, real-time charging triggers, and teardown of active voice sessions.
@@ -12,7 +14,7 @@ public interface IMSC {
      *
      * @param msisdn The phone number initiating the voice session.
      */
-    void onCallStart(String msisdn);
+   void onCallStart(String msisdn, PrintWriter clientWriter);;
 
     /**
      * Terminates an active call session normally when a user hangs up.
