@@ -27,8 +27,8 @@ public class UDPServer implements IUDPServer {
                     DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
                     udpSocket.receive(packet);
 
-                    int bytesReceived = packet.getLength();
-                    System.out.println("Received " + bytesReceived + " bytes of voice stream.");
+//                    int bytesReceived = packet.getLength();
+//                    System.out.println("Received " + bytesReceived + " bytes of voice stream.");
                 }
             } catch (SocketException e) {
                 if (isRunning) {

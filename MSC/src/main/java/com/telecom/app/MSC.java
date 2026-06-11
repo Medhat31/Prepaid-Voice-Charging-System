@@ -68,7 +68,7 @@ public class MSC implements IMSC {
             return;
         }
 
-        CallSession session = new CallSession(msisdn);
+        CallSession session = new CallSession(msisdn, clientWriter);
         activeSessions.put(msisdn, session);
         System.out.println("Call established for " + msisdn + " at " + session.getStartTime());
 
@@ -96,12 +96,31 @@ public class MSC implements IMSC {
 
         BigDecimal balance = balanceRepository.getBalance(msisdn);
         BigDecimal nextMinuteCost = new BigDecimal("1.00");
+        
+        long elapsedSeconds = java.time.Duration.between(session.getStartTime(), LocalDateTime.now()).getSeconds();
+        long elapsedMinutes = (long) Math.round((double) elapsedSeconds / 60.0);
+        
+        if (elapsedMinutes == 0) {
+            elapsedMinutes = 1;
+        }
+
+        PrintWriter clientWriter = session.getWriter();
 
         if (balance.compareTo(nextMinuteCost) >= 0) {
             balanceRepository.deductBalance(msisdn, nextMinuteCost);
             System.out.println("Deducted 1.00 L.E. from " + msisdn + ". Call continues.");
+            
+            if (clientWriter != null) {
+                clientWriter.println("INFO: " + elapsedMinutes + " minute(s) elapsed.");
+            }
+            
         } else {
             System.out.println("Credit exhausted for " + msisdn + "! Force terminating call.");
+            
+            if (clientWriter != null) {
+                clientWriter.println("NOTIFY: CREDIT_EXHAUSTED_DISCONNECT");
+            }
+            
             onCallEnd(msisdn, CallResult.INSUFFICIENT_BALANCE);
         }
     }
