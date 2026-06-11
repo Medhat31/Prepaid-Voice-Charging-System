@@ -1,13 +1,10 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.telecom.reporting;
 
-/**
- *
- * @author mfathy
- */
-public class ScreenReporter {
-    
+import com.telecom.domain.CDR;
+
+public class ScreenReporter implements IReporter {
+    @Override
+    public void report(CDR cdr) {
+        System.out.println("[MSC CDR LOG]: " + cdr.toString());
+    }
 }
