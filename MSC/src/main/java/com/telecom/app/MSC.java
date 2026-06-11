@@ -6,6 +6,7 @@ import com.telecom.domain.CDR;
 import com.telecom.repository.IBalanceRepository;
 import com.telecom.charging.ICharger;
 import com.telecom.reporting.IReporter;
+import java.io.PrintWriter;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -40,21 +41,30 @@ public class MSC implements IMSC {
     /**
      * Triggered when a TCP client signaling packet requests "Start Call"
      */
-    public synchronized void onCallStart(String msisdn) {
+    public synchronized void onCallStart(String msisdn, PrintWriter clientWriter) {
    
-        if (!balanceRepository.userExists(msisdn)) {
+       if (!balanceRepository.userExists(msisdn)) {
             System.err.println("System dropped call. MSISDN not found: " + msisdn);
+            if (clientWriter != null) {
+                clientWriter.println("ERROR: MSISDN_NOT_FOUND");
+            }
             return;
         }
 
         BigDecimal currentBalance = balanceRepository.getBalance(msisdn);
         if (currentBalance.compareTo(new BigDecimal("1.00")) < 0) {
             System.err.println("Insufficient funds to initialize call for: " + msisdn);
+            if (clientWriter != null) {
+                clientWriter.println("ERROR: INSUFFICIENT_BALANCE");
+            }
             return;
         }
 
         if (activeSessions.containsKey(msisdn)) {
             System.err.println("Call already active for: " + msisdn);
+            if (clientWriter != null) {
+                clientWriter.println("ERROR: CALL_ALREADY_ACTIVE");
+            }
             return;
         }
 
@@ -62,6 +72,9 @@ public class MSC implements IMSC {
         activeSessions.put(msisdn, session);
         System.out.println("Call established for " + msisdn + " at " + session.getStartTime());
 
+        if (clientWriter != null) {
+            clientWriter.println("ACK: START " + msisdn);
+        }
 
         balanceRepository.deductBalance(msisdn, new BigDecimal("1.00"));
 

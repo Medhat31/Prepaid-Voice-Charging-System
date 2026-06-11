@@ -30,7 +30,7 @@ public class TCPServer implements ITCPServer {
             serverSocket = new ServerSocket();
             serverSocket.setReuseAddress(true);
             
-            System.out.println("[TCP ENGINE]: Attempting binding sequence on port " + port + "...");
+            System.out.println("Attempting binding sequence on port " + port + "...");
             serverSocket.bind(new InetSocketAddress(port));
             
             System.out.println("TCP Signaling channel online on port " + port);
@@ -68,8 +68,8 @@ public class TCPServer implements ITCPServer {
 
                 if (inputLine.startsWith("START:")) {
                     String msisdn = inputLine.substring(6).trim();
-                    msc.onCallStart(msisdn);
-                    writer.println("ACK: START " + msisdn);
+                    msc.onCallStart(msisdn, writer);
+
 
                 } else if (inputLine.startsWith("END:")) {
                     String msisdn = inputLine.substring(4).trim();
