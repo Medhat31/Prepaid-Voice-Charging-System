@@ -1,13 +1,94 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.telecom.network;
 
-/**
- *
- * @author mfathy
- */
-public class TCPServer {
-    
+import com.telecom.app.IMSC;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+public class TCPServer implements ITCPServer {
+
+    private final IMSC msc;
+    private volatile boolean isRunning;
+    private final ExecutorService threadPool = Executors.newCachedThreadPool();
+
+    public TCPServer(IMSC msc) {
+        this.msc = msc;
+    }
+
+    @Override
+    public void listen(int port) {
+        this.isRunning = true;
+        
+        try (ServerSocket serverSocket = new ServerSocket(port)) {
+            System.out.println("TCP Engine online on port " + port);
+
+            while (isRunning) {
+                Socket clientSocket = serverSocket.accept();
+                System.out.println("New connection from: " + clientSocket.getRemoteSocketAddress());
+                
+                threadPool.submit(() -> handleClient(clientSocket));
+            }
+        } catch (IOException e) {
+            if (isRunning) {
+                System.err.println("Server socket failure: " + e.getMessage());
+            }
+        } finally {
+            stopServer();
+        }
+    }
+
+    private void handleClient(Socket socket) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+             PrintWriter writer = new PrintWriter(socket.getOutputStream(), true)) {
+
+            writer.println("CONNECTED: Welcome to the Telecom Server.");
+            String inputLine;
+
+            while ((inputLine = reader.readLine()) != null) {
+                inputLine = inputLine.trim();
+                System.out.println("[SIGNAL]: " + inputLine);
+
+                if (inputLine.startsWith("START:")) {
+                    String msisdn = inputLine.substring(6).trim();
+                    msc.onCallStart(msisdn);
+                    writer.println("ACK: START " + msisdn);
+                    
+                } else if (inputLine.startsWith("END:")) {
+                    String msisdn = inputLine.substring(4).trim();
+                    msc.onCallEnd(msisdn);
+                    writer.println("ACK: END " + msisdn);
+                    
+                } else if (inputLine.equalsIgnoreCase("QUIT") || inputLine.equalsIgnoreCase("EXIT")) {
+                    writer.println("BYE");
+                    break;
+                } else {
+                    writer.println("ERROR: Use START:<msisdn> or END:<msisdn>");
+                }
+            }
+        } catch (IOException e) {
+            System.err.println("Client closed suddenly: " + e.getMessage());
+        } finally {
+            try {
+                socket.close();
+                System.out.println("Connection closed cleanly.");
+            } catch (IOException e) {
+                System.err.println("Error closing socket: " + e.getMessage());
+            }
+        }
+    }
+
+    @Override
+    public synchronized void stopServer() {
+        if (!isRunning) return;
+        this.isRunning = false;
+        if (!threadPool.isShutdown()) {
+            threadPool.shutdown();
+        }
+        System.out.println("TCP Engine offline.");
+    }
 }

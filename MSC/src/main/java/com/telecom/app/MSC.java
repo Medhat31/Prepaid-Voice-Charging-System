@@ -16,7 +16,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
-public class MSC {
+public class MSC implements IMSC {
 
     private final IBalanceRepository balanceRepository;
     private final ICharger charger;
@@ -65,7 +65,6 @@ public class MSC {
 
         balanceRepository.deductBalance(msisdn, new BigDecimal("1.00"));
 
-        // 4. Schedule Recurring 60-Second Charging Loop
         ScheduledFuture<?> billingTask = scheduler.scheduleAtFixedRate(() -> {
             handleMidCallBilling(msisdn);
         }, 60, 60, TimeUnit.SECONDS);
@@ -94,9 +93,6 @@ public class MSC {
         }
     }
 
-    /**
-     * Triggered when a user hangs up normally
-     */
     public void onCallEnd(String msisdn) {
         onCallEnd(msisdn, CallResult.NORMAL_CALL_CLEARING);
     }
@@ -127,18 +123,16 @@ public class MSC {
         BigDecimal totalCost = charger.calculateCost(msisdn, chargedMinutes);
         BigDecimal remainingBalance = balanceRepository.getBalance(msisdn);
 
-        // 3. Compile Immutable CDR History Entity
         CDR cdr = new CDR(
                 msisdn,
                 session.getStartTime(),
                 endTime,
-                (durationSeconds / 60.0),
+                (durationSeconds / 60),
                 result,
                 totalCost,
                 remainingBalance
         );
 
-        // 4. Dispatch to Composite Reporting Pipeline (Prints to screen AND appends to file)
         reportingService.report(cdr);
     }
 }
