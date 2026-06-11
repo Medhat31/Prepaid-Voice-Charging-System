@@ -6,6 +6,7 @@ import com.telecom.domain.CDR;
 import com.telecom.repository.IBalanceRepository;
 import com.telecom.charging.ICharger;
 import com.telecom.reporting.IReporter;
+import java.io.PrintWriter;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -16,7 +17,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
-public class MSC {
+public class MSC implements IMSC {
 
     private final IBalanceRepository balanceRepository;
     private final ICharger charger;
@@ -40,21 +41,30 @@ public class MSC {
     /**
      * Triggered when a TCP client signaling packet requests "Start Call"
      */
-    public synchronized void onCallStart(String msisdn) {
+    public synchronized void onCallStart(String msisdn, PrintWriter clientWriter) {
    
-        if (!balanceRepository.userExists(msisdn)) {
+       if (!balanceRepository.userExists(msisdn)) {
             System.err.println("System dropped call. MSISDN not found: " + msisdn);
+            if (clientWriter != null) {
+                clientWriter.println("ERROR: MSISDN_NOT_FOUND");
+            }
             return;
         }
 
         BigDecimal currentBalance = balanceRepository.getBalance(msisdn);
         if (currentBalance.compareTo(new BigDecimal("1.00")) < 0) {
             System.err.println("Insufficient funds to initialize call for: " + msisdn);
+            if (clientWriter != null) {
+                clientWriter.println("ERROR: INSUFFICIENT_BALANCE");
+            }
             return;
         }
 
         if (activeSessions.containsKey(msisdn)) {
             System.err.println("Call already active for: " + msisdn);
+            if (clientWriter != null) {
+                clientWriter.println("ERROR: CALL_ALREADY_ACTIVE");
+            }
             return;
         }
 
@@ -62,10 +72,12 @@ public class MSC {
         activeSessions.put(msisdn, session);
         System.out.println("Call established for " + msisdn + " at " + session.getStartTime());
 
+        if (clientWriter != null) {
+            clientWriter.println("ACK: START " + msisdn);
+        }
 
         balanceRepository.deductBalance(msisdn, new BigDecimal("1.00"));
 
-        // 4. Schedule Recurring 60-Second Charging Loop
         ScheduledFuture<?> billingTask = scheduler.scheduleAtFixedRate(() -> {
             handleMidCallBilling(msisdn);
         }, 60, 60, TimeUnit.SECONDS);
@@ -94,9 +106,6 @@ public class MSC {
         }
     }
 
-    /**
-     * Triggered when a user hangs up normally
-     */
     public void onCallEnd(String msisdn) {
         onCallEnd(msisdn, CallResult.NORMAL_CALL_CLEARING);
     }
@@ -127,18 +136,16 @@ public class MSC {
         BigDecimal totalCost = charger.calculateCost(msisdn, chargedMinutes);
         BigDecimal remainingBalance = balanceRepository.getBalance(msisdn);
 
-        // 3. Compile Immutable CDR History Entity
         CDR cdr = new CDR(
                 msisdn,
                 session.getStartTime(),
                 endTime,
-                (durationSeconds / 60.0),
+                (durationSeconds / 60),
                 result,
                 totalCost,
                 remainingBalance
         );
 
-        // 4. Dispatch to Composite Reporting Pipeline (Prints to screen AND appends to file)
         reportingService.report(cdr);
     }
 }
