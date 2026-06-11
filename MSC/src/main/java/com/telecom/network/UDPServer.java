@@ -3,6 +3,7 @@ package com.telecom.network;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.net.InetSocketAddress;
 import java.net.SocketException;
 
 public class UDPServer implements IUDPServer {
@@ -16,14 +17,16 @@ public class UDPServer implements IUDPServer {
 
         new Thread(() -> {
             try {
-                udpSocket = new DatagramSocket(port);
-                byte[] buffer = new byte[1024]; 
+                udpSocket = new DatagramSocket(null);
+                udpSocket.setReuseAddress(true);
+                udpSocket.bind(new InetSocketAddress(port));
+                byte[] buffer = new byte[1024];
                 System.out.println("UDP voice channel online on port " + port);
 
                 while (isRunning) {
                     DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
-                    udpSocket.receive(packet); 
-                    
+                    udpSocket.receive(packet);
+
                     int bytesReceived = packet.getLength();
                     System.out.println("Received " + bytesReceived + " bytes of voice stream.");
                 }
@@ -41,12 +44,12 @@ public class UDPServer implements IUDPServer {
 
     @Override
     public synchronized void stopListening() {
-        if (!isRunning && udpSocket == null) return;
-
         this.isRunning = false;
+
         if (udpSocket != null && !udpSocket.isClosed()) {
-            udpSocket.close(); 
+            udpSocket.close();
+            System.out.println("UDP Voice Channel offline.");
         }
-        System.out.println("UDP Voice Channel offline.");
     }
+
 }
