@@ -55,8 +55,8 @@ public class Main {
 
         IMSC msc = new MSC(balanceRepo, charger, masterReporter);
 
-        ITCPServer tcpServer = new TCPServer(msc);
         IUDPServer udpServer = new UDPServer();
+        ITCPServer tcpServer = new TCPServer(msc, udpServer);
 
         int tcpPort = 59090;
         int udpPort = 59091;

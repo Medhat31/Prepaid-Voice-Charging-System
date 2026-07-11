@@ -14,12 +14,14 @@ import java.util.concurrent.Executors;
 public class TCPServer implements ITCPServer {
 
     private final IMSC msc;
+    private final IUDPServer udpServer;
     private volatile boolean isRunning;
     private final ExecutorService threadPool = Executors.newCachedThreadPool();
     private ServerSocket serverSocket;
 
-    public TCPServer(IMSC msc) {
+    public TCPServer(IMSC msc, IUDPServer udpServer) {
         this.msc = msc;
+        this.udpServer = udpServer;
     }
 
     @Override
@@ -69,11 +71,12 @@ public class TCPServer implements ITCPServer {
                 if (inputLine.startsWith("START:")) {
                     String msisdn = inputLine.substring(6).trim();
                     msc.onCallStart(msisdn, writer);
-
+                    udpServer.startRecording(msisdn);
 
                 } else if (inputLine.startsWith("END:")) {
                     String msisdn = inputLine.substring(4).trim();
                     msc.onCallEnd(msisdn);
+                    udpServer.stopRecording();
                     writer.println("ACK: END " + msisdn);
 
                 } else if (inputLine.equalsIgnoreCase("QUIT") || inputLine.equalsIgnoreCase("EXIT")) {
@@ -86,6 +89,7 @@ public class TCPServer implements ITCPServer {
         } catch (IOException e) {
             System.err.println("Client closed suddenly: " + e.getMessage());
         } finally {
+            udpServer.stopRecording();
             try {
                 socket.close();
                 System.out.println("Connection closed cleanly.");
