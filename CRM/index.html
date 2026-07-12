@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Charging System — Phone Book</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0f1117;
+      --surface:  #1a1d27;
+      --border:   #2a2d3a;
+      --accent:   #4f8ef7;
+      --accent2:  #3ecf8e;
+      --danger:   #e05c5c;
+      --text:     #e2e4ed;
+      --muted:    #6b7080;
+      --radius:   8px;
+      --mono:     'JetBrains Mono', 'Fira Code', monospace;
+      --sans:     'Inter', system-ui, sans-serif;
+    }
+
+    body {
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem;
+    }
+
+    header {
+      display: flex;
+      align-items: baseline;
+      gap: 1rem;
+      margin-bottom: 2.5rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1.25rem;
+    }
+
+    header h1 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    header span {
+      font-size: 0.78rem;
+      color: var(--muted);
+      font-family: var(--mono);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 2rem;
+      align-items: start;
+    }
+
+    /* ── FORM PANEL ── */
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+    }
+
+    .panel-title {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 1.25rem;
+    }
+
+    .field { margin-bottom: 1rem; }
+
+    label {
+      display: block;
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-bottom: 0.35rem;
+      font-family: var(--mono);
+    }
+
+    input {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 0.88rem;
+      padding: 0.6rem 0.75rem;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    input:focus { border-color: var(--accent); }
+
+    .btn {
+      width: 100%;
+      padding: 0.65rem;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+      margin-top: 0.25rem;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn-primary  { background: var(--accent);  color: #fff; }
+    .btn-danger   { background: var(--danger);  color: #fff; margin-top: 0.5rem; }
+    .btn-success  { background: var(--accent2); color: #0f1117; margin-top: 0.5rem; }
+
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 1.25rem 0;
+    }
+
+    /* ── TOAST ── */
+    #toast {
+      font-size: 0.82rem;
+      padding: 0.55rem 0.75rem;
+      border-radius: var(--radius);
+      margin-top: 1rem;
+      display: none;
+      font-family: var(--mono);
+    }
+    #toast.ok  { background: #1a3a2a; color: var(--accent2); border: 1px solid var(--accent2); }
+    #toast.err { background: #3a1a1a; color: var(--danger);  border: 1px solid var(--danger);  }
+
+    /* ── TABLE ── */
+    .table-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .table-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .table-header span {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    #record-count {
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      color: var(--accent);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+
+    thead th {
+      text-align: left;
+      padding: 0.75rem 1.25rem;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+    }
+
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background 0.1s;
+      cursor: pointer;
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: rgba(79,142,247,0.05); }
+    tbody tr.selected { background: rgba(79,142,247,0.10); }
+
+    td {
+      padding: 0.85rem 1.25rem;
+      font-family: var(--mono);
+    }
+
+    td.msisdn { color: var(--text); font-weight: 500; }
+    td.balance { color: var(--accent2); }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem;
+      color: var(--muted);
+      font-size: 0.85rem;
+      font-family: var(--mono);
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Phone Book</h1>
+  <span>Mobile Charging System — Admin Console</span>
+</header>
+
+<div class="layout">
+
+  <!-- LEFT: FORM PANEL -->
+  <div class="panel">
+
+    <p class="panel-title">Add Number</p>
+    <div class="field">
+      <label>MSISDN</label>
+      <input id="add-msisdn" type="text" placeholder="01012345678" />
+    </div>
+    <div class="field">
+      <label>Initial Balance ($)</label>
+      <input id="add-balance" type="number" placeholder="10.00" min="0" step="0.01" />
+    </div>
+    <button class="btn btn-primary" onclick="addNumber()">Add Number</button>
+
+    <hr class="divider" />
+
+    <p class="panel-title">Selected Number</p>
+    <div class="field">
+      <label>MSISDN</label>
+      <input id="sel-msisdn" type="text" placeholder="Select a row →" readonly />
+    </div>
+    <div class="field">
+      <label>New Balance ($)</label>
+      <input id="sel-balance" type="number" placeholder="0.00" min="0" step="0.01" />
+    </div>
+    <button class="btn btn-success" onclick="updateBalance()">Update Balance</button>
+    <button class="btn btn-danger"  onclick="deleteNumber()">Delete Number</button>
+
+    <div id="toast"></div>
+  </div>
+
+  <!-- RIGHT: TABLE -->
+  <div class="table-wrap">
+    <div class="table-header">
+      <span>Registered Numbers</span>
+      <span id="record-count">— records</span>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>MSISDN</th>
+          <th>Balance</th>
+        </tr>
+      </thead>
+      <tbody id="table-body">
+        <tr><td colspan="2" class="empty-state">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+  const API = '/api/phonebook';
+  let selectedMsisdn = null;
+
+  // ── Toast ──────────────────────────────────────────────
+  function toast(msg, ok = true) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = ok ? 'ok' : 'err';
+    el.style.display = 'block';
+    setTimeout(() => el.style.display = 'none', 3000);
+  }
+
+  // ── Load & render table ────────────────────────────────
+  async function loadNumbers() {
+    const res = await fetch(API);
+    const data = await res.json();
+    const tbody = document.getElementById('table-body');
+    document.getElementById('record-count').textContent = `${data.length} record${data.length !== 1 ? 's' : ''}`;
+
+    if (data.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="2" class="empty-state">No numbers registered yet.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = data.map(r => `
+      <tr onclick="selectRow('${r.msisdn}', '${r.balance}')"
+          id="row-${r.msisdn}"
+          class="${r.msisdn === selectedMsisdn ? 'selected' : ''}">
+        <td class="msisdn">${r.msisdn}</td>
+        <td class="balance">$${parseFloat(r.balance).toFixed(2)}</td>
+      </tr>
+    `).join('');
+  }
+
+  // ── Row selection ──────────────────────────────────────
+  function selectRow(msisdn, balance) {
+    selectedMsisdn = msisdn;
+    document.getElementById('sel-msisdn').value = msisdn;
+    document.getElementById('sel-balance').value = parseFloat(balance).toFixed(2);
+    document.querySelectorAll('tbody tr').forEach(r => r.classList.remove('selected'));
+    const row = document.getElementById(`row-${msisdn}`);
+    if (row) row.classList.add('selected');
+  }
+
+  // ── Add ───────────────────────────────────────────────
+  async function addNumber() {
+    const msisdn  = document.getElementById('add-msisdn').value.trim();
+    const balance = document.getElementById('add-balance').value.trim();
+    if (!msisdn || !balance) return toast('MSISDN and balance are required.', false);
+
+    const res = await fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ msisdn, balance })
+    });
+    const data = await res.json();
+
+    if (res.ok) {
+      toast(`${msisdn} added.`);
+      document.getElementById('add-msisdn').value = '';
+      document.getElementById('add-balance').value = '';
+      loadNumbers();
+    } else {
+      toast(data.error, false);
+    }
+  }
+
+  // ── Update balance ────────────────────────────────────
+  async function updateBalance() {
+    if (!selectedMsisdn) return toast('Select a number first.', false);
+    const balance = document.getElementById('sel-balance').value.trim();
+    if (!balance) return toast('Enter a new balance.', false);
+
+    const res = await fetch(`${API}/${selectedMsisdn}/balance`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ balance })
+    });
+    const data = await res.json();
+    res.ok ? toast(`Balance updated for ${selectedMsisdn}.`) : toast(data.error, false);
+    loadNumbers();
+  }
+
+  // ── Delete ────────────────────────────────────────────
+  async function deleteNumber() {
+    if (!selectedMsisdn) return toast('Select a number first.', false);
+
+    const res = await fetch(`${API}/${selectedMsisdn}`, { method: 'DELETE' });
+    const data = await res.json();
+
+    if (res.ok) {
+      toast(`${selectedMsisdn} deleted.`);
+      selectedMsisdn = null;
+      document.getElementById('sel-msisdn').value = '';
+      document.getElementById('sel-balance').value = '';
+      loadNumbers();
+    } else {
+      toast(data.error, false);
+    }
+  }
+
+  // ── Init ──────────────────────────────────────────────
+  loadNumbers();
+</script>
+</body>
+</html>
