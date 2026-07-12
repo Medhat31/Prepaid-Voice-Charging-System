@@ -1,3 +1,4 @@
 /MSC/target/
 **/db.properties
 agents
+/IVR/target/
