@@ -6,4 +6,5 @@ public interface IPhoneBookService {
     void deleteNumber(String msisdn);
     void updateBalance(String msisdn, BigDecimal newBalance);
     List<PhoneRecord> getAllNumbers();
+    BigDecimal getBalance(String msisdn);
 }

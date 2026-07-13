@@ -2,3 +2,5 @@
 **/db.properties
 agents
 /IVR/target/
+/CRM/target/
+*.class

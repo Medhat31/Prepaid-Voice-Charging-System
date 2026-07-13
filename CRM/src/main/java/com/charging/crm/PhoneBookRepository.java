@@ -81,4 +81,21 @@ public class PhoneBookRepository implements IPhoneBookRepository {
             throw new RuntimeException("Failed to check existence of: " + msisdn, e);
         }
     }
+
+    @Override
+    public BigDecimal getBalance(String msisdn) {
+        String sql = "SELECT balance FROM user_balance WHERE msisdn = ?";
+        try (Connection conn = db.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, msisdn);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getBigDecimal("balance");
+                }
+                return null;
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to get balance for: " + msisdn, e);
+        }
+    }
 }

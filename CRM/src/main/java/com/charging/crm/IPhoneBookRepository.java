@@ -7,4 +7,5 @@ public interface IPhoneBookRepository {
     void updateBalance(String msisdn, BigDecimal newBalance);
     List<PhoneRecord> getAllNumbers();
     boolean exists(String msisdn);
+    BigDecimal getBalance(String msisdn);
 }
