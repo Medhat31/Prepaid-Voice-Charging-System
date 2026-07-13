@@ -1,4 +1,4 @@
-import java.io.FileInputStream;
+import java.io.InputStream;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -13,7 +13,10 @@ public class PostgreSQLConnection implements IDatabaseConnection {
 
     public PostgreSQLConnection() {
         Properties props = new Properties();
-        try (FileInputStream in = new FileInputStream("db.properties")) {
+        try (InputStream in = getClass().getClassLoader().getResourceAsStream("db.properties")) {
+            if (in == null) {
+                throw new IOException("db.properties not found on classpath");
+            }
             props.load(in);
             this.url = props.getProperty("db.url");
             this.user = props.getProperty("db.user");
@@ -25,6 +28,11 @@ public class PostgreSQLConnection implements IDatabaseConnection {
 
     @Override
     public Connection getConnection() throws SQLException {
+        try {
+            Class.forName("org.postgresql.Driver");
+        } catch (ClassNotFoundException e) {
+            throw new SQLException("PostgreSQL driver not found", e);
+        }
         return DriverManager.getConnection(url, user, password);
     }
 }

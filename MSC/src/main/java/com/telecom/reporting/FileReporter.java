@@ -6,7 +6,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 
 public class FileReporter implements IReporter {
-    private final String filePath = "/tmp/calls.cdr";
+    private final String filePath = "/tmp/calls";
 
     @Override
     public void report(CDR cdr) {

@@ -60,11 +60,8 @@ public class MobilePhone {
         TCPHandler tcp = new TCPHandler();
         UDPHandler udp = new UDPHandler();
 
-        MobilePhone phone = new MobilePhone(tcp, udp, timer, display, "01002345678");
+        MobilePhone phone = new MobilePhone(tcp, udp, timer, display, args[0]);
         phone.initiateCall("01098765432");
-
-        // Simulate a 10-second call
-        Thread.sleep(10000);
-        phone.endCall();
+    
     }
 }

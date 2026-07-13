@@ -95,7 +95,8 @@ public class IVR extends BaseAgiScript {
                     if (balance != null) {
                         int pounds = balance.intValue();
                         int piasters = (int) Math.round((balance - pounds) * 100);
-
+                           
+                        streamFile("current-balance-" + choice);
                         if ("ar".equals(choice)) {
                             playArabicNumber(pounds);
                             streamFile("pounds-ar");
@@ -190,6 +191,16 @@ public class IVR extends BaseAgiScript {
                 streamFile("digits/" + units);
                 streamFile("digits/and");
                 streamFile("digits/" + tens);
+            }
+        } else if (number >= 100 && number < 1000) {
+            int hundreds = (number / 100) * 100;
+            int remainder = number % 100;
+
+            sayNumber(String.valueOf(hundreds));
+
+            if (remainder > 0) {
+                streamFile("digits/and");
+                playArabicNumber(remainder);
             }
         } else {
             sayNumber(String.valueOf(number));

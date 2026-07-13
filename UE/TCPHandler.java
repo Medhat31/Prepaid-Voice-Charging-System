@@ -23,7 +23,7 @@ public class TCPHandler implements ITCPClient {
             try {
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    System.out.println("[MSC]: " + line);
+                    System.out.println("\n[MSC]: " + line);
                     if (line.contains("CREDIT_EXHAUSTED_DISCONNECT")) {
                         System.err.println("[Mobile] Credit exhausted! Dropping call...");
                         // Typically we would callback to MobilePhone to end the call here,

@@ -1,66 +1,43 @@
 package com.charging.ivr;
 
-import java.io.InputStream;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.Properties;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
 
 public class DBConfig {
 
-    private static final Properties properties = new Properties();
+    private static final String CRM_BASE_URL = "http://localhost:8080/CRM/api/phonebook";
 
-    static {
+    public static Double getBalance(String msisdn) {
+        try {
+            URL url = new URL(CRM_BASE_URL + "/" + msisdn + "/balance");
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.setRequestProperty("Accept", "application/json");
 
-        try (InputStream input = DBConfig.class.getClassLoader().getResourceAsStream("db.properties")) {
+            if (conn.getResponseCode() == 200) {
+                BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                StringBuilder response = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    response.append(line);
+                }
+                reader.close();
 
-            if (input == null) {
-                System.err.println("Unable to load db.properties!");
-            } else {
-                properties.load(input);
-                Class.forName("org.postgresql.Driver");
-                System.out.println("Database properties loaded successfully");
+                // Parse balance from JSON: {"msisdn":"...","balance":"..."}
+                String json = response.toString();
+                int start = json.indexOf("\"balance\":\"") + 11;
+                int end = json.indexOf("\"", start);
+                return Double.parseDouble(json.substring(start, end));
             }
 
+            conn.disconnect();
         } catch (Exception e) {
-            System.err.println("Failed to load DB config");
-            e.printStackTrace();
+            System.err.println("Failed to get balance from CRM API: " + e.getMessage());
         }
 
+        return null;
     }
-    
-    private static Connection getConnection() throws SQLException {
-        return DriverManager.getConnection(
-                properties.getProperty("db.url"),
-                properties.getProperty("db.user"),
-                properties.getProperty("db.password")
-        );
-    }
-    
-     public static Double getBalance(String msisdn) {
-        
-        String query = "SELECT balance FROM user_balance WHERE msisdn = ?";
-        
-        try (Connection conn = getConnection();
-                PreparedStatement stmt = conn.prepareStatement(query)) {
-            
-           stmt.setString(1, msisdn);
-           
-           try (ResultSet rs = stmt.executeQuery()) {
-               if (rs.next()) {
-                   return rs.getDouble("balance");
-               }
-           }
-            
-        } catch (SQLException e) {
-            System.err.println("Database query failed:" + e.getMessage());
-        }
-        
-        return null;  // Returns null if phone number doesn't exist in DB
-    }
-    
-
 
 }

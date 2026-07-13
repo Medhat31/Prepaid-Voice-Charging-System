@@ -12,6 +12,12 @@ public class PhoneBookController {
 
     private final IPhoneBookService service;
 
+    public PhoneBookController() {
+        IDatabaseConnection db = new PostgreSQLConnection();
+        IPhoneBookRepository repo = new PhoneBookRepository(db);
+        this.service = new PhoneBookService(repo);
+    }
+
     public PhoneBookController(IPhoneBookService service) {
         this.service = service;
     }
@@ -61,6 +67,19 @@ public class PhoneBookController {
             return Response.ok(Map.of("message", "Balance updated successfully.")).build();
         } catch (IllegalArgumentException | IllegalStateException e) {
             return Response.status(Response.Status.BAD_REQUEST)
+                           .entity(Map.of("error", e.getMessage()))
+                           .build();
+        }
+    }
+
+    @GET
+    @Path("/{msisdn}/balance")
+    public Response getBalance(@PathParam("msisdn") String msisdn) {
+        try {
+            BigDecimal balance = service.getBalance(msisdn);
+            return Response.ok(Map.of("msisdn", msisdn, "balance", balance.toString())).build();
+        } catch (IllegalStateException e) {
+            return Response.status(Response.Status.NOT_FOUND)
                            .entity(Map.of("error", e.getMessage()))
                            .build();
         }

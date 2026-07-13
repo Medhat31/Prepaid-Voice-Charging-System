@@ -46,4 +46,12 @@ public class PhoneBookService implements IPhoneBookService {
     public List<PhoneRecord> getAllNumbers() {
         return repository.getAllNumbers();
     }
+
+    @Override
+    public BigDecimal getBalance(String msisdn) {
+        if (!repository.exists(msisdn)) {
+            throw new IllegalStateException("Number not found: " + msisdn);
+        }
+        return repository.getBalance(msisdn);
+    }
 }
