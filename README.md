@@ -25,6 +25,13 @@ The administrative Phone Book interface.
 - **Frontend**: A sleek, modern Single Page Application (SPA) built purely with Vanilla HTML, CSS (dark-themed), and JavaScript.
 - **Features**: Allows telecom administrators to Create, Read, Update, and Delete subscribers and their balances in the `user_balance` table securely.
 
+### 4. Interactive Voice Response (IVR)
+A robust FastAGI server integrated with an Asterisk PBX, providing a real-time bilingual balance checking service over SIP phone lines.
+- **Bilingual Routing**: Dynamically switches between English and Arabic utilizing Asterisk's `CHANNEL(language)` variable based on DTMF keypad input.
+- **Custom Arabic Grammar Engine**: Features a custom Java algorithm that overrides default Asterisk number parsing to correctly pronounce complex Arabic numbers (21-99) alongside full currency structures.
+- **Fault-Tolerant State Machine**: Implements strict nested retry loops, database validation for MSISDNs, and timeout handling, guaranteeing a safe channel `hangup()` in all edge cases.
+- **Audio Infrastructure**: Employs strictly formatted 8000Hz Mono GSM audio files for seamless native Asterisk playback.
+
 ## 🗄️ Database
 The entire suite relies on a unified **PostgreSQL** database (hosted via Neon Database).
 - **Table**: `user_balance`
@@ -38,6 +45,8 @@ The entire suite relies on a unified **PostgreSQL** database (hosted via Neon Da
 * **Networking**: `java.net.Socket`, `java.net.ServerSocket`, `java.net.DatagramSocket`
 * **Web APIs**: JAX-RS (Jakarta)
 * **Frontend**: HTML5, CSS3, JavaScript (ES6)
+* **PBX Engine**: Asterisk, FastAGI (asterisk-java)
+* **Audio Processing**: SoX (Sound eXchange)
 
 ## 🚀 How to Run
 
@@ -54,3 +63,9 @@ The entire suite relies on a unified **PostgreSQL** database (hosted via Neon Da
    - `java MobilePhone`
 4. **Access the CRM**:
    - Compile and deploy the JAX-RS CRM module to your preferred application server (e.g., Tomcat, WildFly) to manage balances via the `index.html` interface.
+   
+5. **Start the IVR Server & Asterisk:**
+1. Compile and run the `IVR.java` FastAGI server.
+2. Place your compiled `.gsm` audio files into your server at `/var/lib/asterisk/sounds/en/` and `/var/lib/asterisk/sounds/ar/digits/`.
+3. Copy the `extensions.conf` file into `/etc/asterisk/` and execute `dialplan reload` in the Asterisk CLI.
+4. Dial the configured extension (e.g., `7000`) from a connected SIP softphone to access the IVR.
