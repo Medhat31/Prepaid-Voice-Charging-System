@@ -226,7 +226,7 @@
       <input id="add-msisdn" type="text" placeholder="01012345678" />
     </div>
     <div class="field">
-      <label>Initial Balance ($)</label>
+      <label>Initial Balance (EGP)</label>
       <input id="add-balance" type="number" placeholder="10.00" min="0" step="0.01" />
     </div>
     <button class="btn btn-primary" onclick="addNumber()">Add Number</button>
@@ -239,7 +239,7 @@
       <input id="sel-msisdn" type="text" placeholder="Select a row →" readonly />
     </div>
     <div class="field">
-      <label>New Balance ($)</label>
+      <label>New Balance (EGP)</label>
       <input id="sel-balance" type="number" placeholder="0.00" min="0" step="0.01" />
     </div>
     <button class="btn btn-success" onclick="updateBalance()">Update Balance</button>
@@ -299,7 +299,7 @@
           id="row-${r.msisdn}"
           class="${r.msisdn === selectedMsisdn ? 'selected' : ''}">
         <td class="msisdn">${r.msisdn}</td>
-        <td class="balance">$${parseFloat(r.balance).toFixed(2)}</td>
+        <td class="balance">${parseFloat(r.balance).toFixed(2)} EGP</td>
       </tr>
     `).join('');
   }
