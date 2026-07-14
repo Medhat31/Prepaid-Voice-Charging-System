@@ -30,7 +30,10 @@ public class TCPHandler implements ITCPClient {
                         // but for simulation, we'll just log and let the timer/user handle it,
                         // or we could simulate an immediate exit.
                         System.exit(0);
-                    }
+                    } else if (line.contains("INSUFFICIENT_BALANCE")) {
+        System.err.println("[Mobile] Call setup failed! Dropping call...");
+        System.exit(0);
+    }
                 }
             } catch (IOException e) {
                 System.err.println("[TCP] Connection read error or closed: " + e.getMessage());

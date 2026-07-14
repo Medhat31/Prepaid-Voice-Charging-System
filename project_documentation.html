@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prepaid Voice Charging System - Project Documentation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 { color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        h2 { color: #34495e; margin-top: 30px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        h3 { color: #2980b9; margin-top: 25px; }
+        ul { margin-bottom: 15px; }
+        li { margin-bottom: 8px; }
+        hr { border: 0; border-top: 1px solid #ddd; margin: 40px 0; }
+        .mermaid { margin: 30px 0; text-align: center; }
+    </style>
+</head>
+<body>
+
+    <h1>Prepaid Voice Charging System - Project Documentation</h1>
+
+    <h2>1. Project Overview</h2>
+    <p>The <strong>Prepaid Voice Charging System</strong> is a comprehensive telecommunications simulation that handles real-time voice call charging, user management, and Interactive Voice Response (IVR) services. It is divided into multiple interconnected modules, each simulating a real-world component of a telecom network.</p>
+
+    <h2>2. System Architecture</h2>
+    <p>The system is composed of four primary modules communicating with a central PostgreSQL database.</p>
+
+    <div class="mermaid">
+    graph TD
+        UE[User Equipment - UE]
+        MSC[Mobile Switching Center - MSC]
+        IVR[Interactive Voice Response - IVR]
+        CRM[Customer Relationship Management - CRM]
+        DB[(PostgreSQL Database)]
+
+        UE <-->|UDP Audio Stream| MSC
+        MSC <-->|JDBC| DB
+        IVR <-->|HTTP GET /balance| CRM
+        CRM <-->|JDBC| DB
+        IVR <-->|FastAGI| Asterisk((Asterisk PBX))
+    </div>
+
+    <h3>Module Descriptions</h3>
+    <ol>
+        <li><strong>User Equipment (UE)</strong>: A Java application simulating a mobile phone. It captures real audio from the system microphone using <code>TargetDataLine</code> and streams it over UDP to the MSC.</li>
+        <li><strong>Mobile Switching Center (MSC)</strong>: The core switching and charging node. It intercepts the UDP audio stream, tracks call duration, and deducts balance from the database in real-time.</li>
+        <li><strong>Interactive Voice Response (IVR)</strong>: A Java FastAGI script running on Asterisk. It provides a bilingual (Arabic/English) menu for users to check their balance.</li>
+        <li><strong>CRM & Web Frontend</strong>: A Jakarta EE REST API running on Tomcat, providing endpoints to add/delete numbers and query balances. It includes an HTML/JS frontend for administrators.</li>
+    </ol>
+
+    <hr>
+
+    <h2>3. Real-Time Charging Flow</h2>
+    <p>When a user initiates a call, the MSC processes the call setup, performs initial charging, and triggers an asynchronous background task to handle mid-call billing every 60 seconds.</p>
+
+    <div class="mermaid">
+    sequenceDiagram
+        autonumber
+        participant UE as User Equipment (UE)
+        participant MSC as Mobile Switching Center
+        participant DB as PostgreSQL Database
+
+        %% CALL SETUP PHASE
+        rect rgb(240, 248, 255)
+            Note over UE,DB: Call Setup & Initial Authorization
+            UE->>MSC: Call Request (MSISDN)
+            MSC->>DB: getBalance(msisdn)
+            DB-->>MSC: Return current balance
+
+            alt Balance < 1.00 L.E.
+                MSC-->>UE: ERROR: INSUFFICIENT_BALANCE
+                Note over MSC: Call Rejected
+            else Balance >= 1.00 L.E.
+                MSC->>MSC: Check if call already active
+                
+                alt Call Already Active
+                    MSC-->>UE: ERROR: CALL_ALREADY_ACTIVE
+                    Note over MSC: Call Rejected
+                else Call Not Active
+                    MSC->>MSC: Create CallSession & store in activeSessions
+                    MSC-->>UE: ACK: START [msisdn]
+                    MSC->>File: Begin recording audio to /tmp/charging/records/*.wav
+                    MSC->>DB: deductBalance(msisdn, 1.00)
+                    Note right of MSC: Initial 1.00 L.E. deducted for the 1st minute
+                    MSC->>MSC: Start Scheduled Billing Task (Runs every 60s)
+                end
+            end
+        end
+
+        %% MID-CALL BILLING PHASE
+        rect rgb(245, 255, 250)
+            Note over UE,DB: Mid-Call Billing Loop (Executes every 60 seconds)
+            loop Every 60 Seconds
+                MSC->>MSC: Trigger handleMidCallBilling()
+                MSC->>DB: getBalance(msisdn)
+                DB-->>MSC: Return current balance
+                
+                alt Balance >= 1.00 L.E.
+                    MSC->>DB: deductBalance(msisdn, 1.00)
+                    MSC-->>UE: INFO: [X] minute(s) elapsed.
+                    Note right of MSC: Call Continues
+                else Balance < 1.00 L.E.
+                    Note right of MSC: Credit Exhausted!
+                    MSC-->>UE: NOTIFY: CREDIT_EXHAUSTED_DISCONNECT
+                    MSC->>MSC: Trigger onCallEnd(INSUFFICIENT_BALANCE)
+                    MSC->>MSC: Remove from activeSessions & Cancel Task
+                    Note over MSC: Call Terminated
+                end
+            end
+        end
+
+        %% CALL TERMINATION PHASE
+        rect rgb(255, 240, 245)
+            Note over UE,DB: Normal Call Teardown
+            UE->>MSC: End Call Request
+            MSC->>MSC: Trigger onCallEnd(NORMAL_CALL_CLEARING)
+            MSC->>MSC: Cancel Billing Timer & Remove Session
+            MSC->>File: Append Call Detail Record (CDR) to /tmp/calls
+        end
+    </div>
+
+    <hr>
+
+    <h2>4. IVR Balance Check Sequence (API Integration)</h2>
+    <p>The IVR system has been decoupled from direct database access. It now securely queries the CRM via REST API to retrieve subscriber balances.</p>
+
+    <div class="mermaid">
+    sequenceDiagram
+        participant Caller
+        participant Asterisk
+        participant IVR_App as IVR (FastAGI)
+        participant CRM_API as CRM REST API
+        participant DB as PostgreSQL
+
+        Caller->>Asterisk: Dials IVR Number
+        Asterisk->>IVR_App: Triggers FastAGI Script
+        IVR_App->>Caller: Plays Bilingual Welcome & Menu
+        Caller->>IVR_App: Enters MSISDN (Phone Number)
+        IVR_App->>CRM_API: HTTP GET /api/phonebook/{msisdn}/balance
+        CRM_API->>DB: SELECT balance FROM user_balance
+        DB-->>CRM_API: Returns Balance
+        CRM_API-->>IVR_App: JSON { "msisdn": "...", "balance": 325 }
+        IVR_App->>Caller: Announces balance
+        IVR_App->>Asterisk: Hangup
+    </div>
+
+    <hr>
+
+    <h2>5. Key Workflows & Diagrams</h2>
+    <h3>5.1 IVR Internal Logic Flowchart</h3>
+    <p>This flowchart details the internal loop and logic of the FastAGI IVR script when a user dials in.</p>
+
+    <div class="mermaid">
+    flowchart TD
+        Start([Start Call]) --> Welcome[Play Bilingual Welcome]
+        Welcome --> LangMenu{Language Menu: 1 AR, 2 EN}
+        LangMenu -- 1 --> SetAR[Set Language: Arabic]
+        LangMenu -- 2 --> SetEN[Set Language: English]
+        LangMenu -- Invalid/Timeout --> RetryLang[Play Invalid Option]
+        RetryLang --> LangMenu
+        
+        SetAR --> EnterPhone[Prompt: Enter MSISDN]
+        SetEN --> EnterPhone
+        
+        EnterPhone --> CheckBalance{Fetch Balance via CRM API}
+        CheckBalance -- Valid Balance --> Announce[Announce Balance]
+        Announce --> Goodbye[Play Goodbye] --> Hangup([Hangup])
+        
+        CheckBalance -- Invalid/Not Found --> InvalidNum[Play Invalid Number]
+        InvalidNum --> RetryMenu{Retry Menu: 1 Try Again, 2 Exit}
+        RetryMenu -- 1 --> EnterPhone
+        RetryMenu -- 2 --> Goodbye
+        RetryMenu -- Invalid --> RetryMenu
+    </div>
+
+    <hr>
+
+    <h2>6. Recently Implemented Features</h2>
+    <ul>
+        <li><strong>🎙️ Real Audio Capture (UE Module):</strong> Implemented <code>TargetDataLine</code> integration to capture real-time audio directly from the user's system microphone, replacing empty dummy bytes.</li>
+        <li><strong>🌐 CRM REST API & Decoupling:</strong> Built a new <code>GET /api/phonebook/{msisdn}/balance</code> endpoint in the CRM. Re-architected the IVR module to fetch balances via HTTP instead of direct DB connections.</li>
+        <li><strong>🌍 Advanced Arabic Audio Processing:</strong> Implemented a custom recursive algorithm in <code>IVR.java</code> to isolate hundreds, tens, and units, mapping them accurately to Asterisk's internal dictionary and inserting the Arabic "and" (و) conjunction in the correct syntactic order.</li>
+        <li><strong>🚀 Tomcat WAR Deployment Stability:</strong> Replaced static file-system paths with classpath resource loading for database properties. Explicitly registered JDBC drivers and fixed CDI instantiation errors.</li>
+    </ul>
+
+    <hr>
+
+    <h2>7. Technical Stack</h2>
+    <ul>
+        <li><strong>Languages</strong>: Java 11 / 25, JavaScript, HTML, CSS</li>
+        <li><strong>Frameworks & Libraries</strong>: Jakarta EE (Jersey/JAX-RS), Asterisk-Java (FastAGI)</li>
+        <li><strong>Database</strong>: PostgreSQL</li>
+        <li><strong>Servers</strong>: Apache Tomcat, Asterisk PBX</li>
+        <li><strong>Build Tool</strong>: Maven</li>
+    </ul>
+
+    <!-- Load Mermaid script to render the diagrams -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+        mermaid.initialize({ startOnLoad: true });
+        // Automatically prompt print dialog slightly after rendering
+        setTimeout(() => {
+            window.print();
+        }, 1500);
+    </script>
+</body>
+</html>
